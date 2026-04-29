@@ -6,8 +6,15 @@ import ServicesSection from "@/components/ServicesSection";
 import SelectedWorkSection from "@/components/SelectedWorkSection";
 import TestimonialsSection from "@/components/TestimonialsSection";
 import NewsSection from "@/components/NewsSection";
+import { client } from "@/sanity/lib/client";
+import { portfolioQuery } from "@/sanity/queries";
+import type { PortfolioItem } from "@/components/SelectedWorkSection";
 
-export default function Home() {
+export const revalidate = 60;
+
+export default async function Home() {
+  const portfolioItems: PortfolioItem[] = await client.fetch(portfolioQuery);
+
   return (
     <main>
       <HeroSection />
@@ -15,7 +22,7 @@ export default function Home() {
       <AboutSection />
       <FullBleedPhoto />
       <ServicesSection />
-      <SelectedWorkSection />
+      <SelectedWorkSection items={portfolioItems} />
       <TestimonialsSection />
       <NewsSection />
     </main>

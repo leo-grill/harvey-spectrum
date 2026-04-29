@@ -1,4 +1,16 @@
 import Image from "next/image";
+import { urlFor } from "@/sanity/lib/image";
+import type { SanityImageSource } from "@sanity/image-url";
+
+export interface PortfolioItem {
+  _id: string;
+  title: string;
+  tags: string[];
+  coverImage?: SanityImageSource;
+  imageUrl?: string;
+  projectUrl?: string;
+  order?: number;
+}
 
 const labelClass = "font-mono text-[14px] uppercase text-[#1f1f1f] leading-[1.1]";
 
@@ -41,49 +53,64 @@ function TagPill({ label }: { label: string }) {
 }
 
 interface ProjectCardProps {
-  title: string;
-  tags: string[];
-  image: string;
+  item: PortfolioItem;
   mobileH: string;
   desktopH: string;
 }
 
-function ProjectCard({ title, tags, image, mobileH, desktopH }: ProjectCardProps) {
-  return (
+function resolveImageSrc(item: PortfolioItem): string {
+  if (item.coverImage) {
+    return urlFor(item.coverImage).width(900).auto("format").url();
+  }
+  return item.imageUrl ?? "";
+}
+
+function ProjectCard({ item, mobileH, desktopH }: ProjectCardProps) {
+  const src = resolveImageSrc(item);
+  const inner = (
     <div className="flex flex-col gap-[10px] w-full">
       <div className={`relative w-full overflow-hidden ${mobileH} ${desktopH}`}>
-        <Image
-          src={image}
-          alt={title}
-          fill
-          className="object-cover"
-          sizes="(max-width: 768px) 100vw, 50vw"
-        />
+        {src && (
+          <Image
+            src={src}
+            alt={item.title}
+            fill
+            className="object-cover"
+            sizes="(max-width: 768px) 100vw, 50vw"
+          />
+        )}
         <div className="absolute bottom-4 left-4 flex gap-3">
-          {tags.map((tag) => (
+          {item.tags?.map((tag) => (
             <TagPill key={tag} label={tag} />
           ))}
         </div>
       </div>
       <div className="flex items-center justify-between">
         <p className="font-black text-[24px] md:text-[36px] text-black tracking-[-0.04em] leading-[1.1] uppercase whitespace-nowrap">
-          {title}
+          {item.title}
         </p>
         <ArrowIcon />
       </div>
     </div>
   );
+
+  if (item.projectUrl) {
+    return (
+      <a href={item.projectUrl} target="_blank" rel="noopener noreferrer" className="block">
+        {inner}
+      </a>
+    );
+  }
+  return inner;
 }
 
 function CTABlock({ className }: { className?: string }) {
   return (
     <div className={`flex gap-3 items-stretch w-full md:w-[465px] ${className ?? ""}`}>
-      {/* Left brackets */}
       <div className="flex flex-col items-start justify-between shrink-0 w-6">
         <Corner />
         <Corner className="-rotate-90" />
       </div>
-      {/* Content */}
       <div className="flex-1 flex flex-col gap-[10px] py-3">
         <p className="italic text-[14px] text-[#1f1f1f] leading-[1.3] tracking-[-0.04em]">
           Discover how my creativity transforms ideas into impactful digital experiences — schedule a call with me to get started.
@@ -92,7 +119,6 @@ function CTABlock({ className }: { className?: string }) {
           Let&apos;s talk
         </button>
       </div>
-      {/* Right brackets */}
       <div className="flex flex-col items-end justify-between shrink-0 w-6">
         <Corner className="rotate-90" />
         <Corner className="rotate-180" />
@@ -101,7 +127,13 @@ function CTABlock({ className }: { className?: string }) {
   );
 }
 
-export default function SelectedWorkSection() {
+const LEFT_HEIGHTS  = ["md:h-[744px]", "md:h-[699px]"];
+const RIGHT_HEIGHTS = ["md:h-[699px]", "md:h-[744px]"];
+
+export default function SelectedWorkSection({ items }: { items: PortfolioItem[] }) {
+  const leftItems  = items.slice(0, 2);
+  const rightItems = items.slice(2, 4);
+
   return (
     <section className="bg-white px-4 py-12 md:px-8 md:py-20" id="portfolio">
 
@@ -126,7 +158,6 @@ export default function SelectedWorkSection() {
           </div>
           <p className={labelClass}>004</p>
         </div>
-        {/* Vertical "[ portfolio ]" label — rotated text sitting on the right */}
         <div className="flex h-[110px] w-[15px] items-center justify-center">
           <p className={`${labelClass} -rotate-90 whitespace-nowrap`}>[ portfolio ]</p>
         </div>
@@ -134,25 +165,24 @@ export default function SelectedWorkSection() {
 
       {/* ── Mobile: single column ── */}
       <div className="flex flex-col gap-6 md:hidden">
-        <ProjectCard title="Surfers Paradise"    tags={["Social Media", "Photography"]} image="/portfolio-surfers-paradise.png"   mobileH="h-[390px]" desktopH="" />
-        <ProjectCard title="Cyberpunk Caffe"     tags={["Social Media", "Photography"]} image="/portfolio-cyberpunk-caffe.png"    mobileH="h-[390px]" desktopH="" />
-        <ProjectCard title="Agency 976"          tags={["Social Media", "Photography"]} image="/portfolio-agency-976.png"         mobileH="h-[390px]" desktopH="" />
-        <ProjectCard title="Minimal Playground"  tags={["Social Media", "Photography"]} image="/portfolio-minimal-playground.png" mobileH="h-[390px]" desktopH="" />
+        {items.map((item) => (
+          <ProjectCard key={item._id} item={item} mobileH="h-[390px]" desktopH="" />
+        ))}
         <CTABlock />
       </div>
 
       {/* ── Desktop: 2-column staggered ── */}
       <div className="hidden md:flex gap-6 items-stretch">
-        {/* Left column: 2 cards + CTA, spread to full height via justify-between */}
         <div className="flex-1 flex flex-col justify-between min-w-0">
-          <ProjectCard title="Surfers Paradise" tags={["Social Media", "Photography"]} image="/portfolio-surfers-paradise.png"  mobileH="" desktopH="md:h-[744px]" />
-          <ProjectCard title="Cyberpunk Caffe"  tags={["Social Media", "Photography"]} image="/portfolio-cyberpunk-caffe.png"   mobileH="" desktopH="md:h-[699px]" />
+          {leftItems.map((item, i) => (
+            <ProjectCard key={item._id} item={item} mobileH="" desktopH={LEFT_HEIGHTS[i]} />
+          ))}
           <CTABlock />
         </div>
-        {/* Right column: starts 240px down, 2 cards */}
         <div className="flex-1 flex flex-col gap-[117px] min-w-0 pt-[240px]">
-          <ProjectCard title="Agency 976"         tags={["Social Media", "Photography"]} image="/portfolio-agency-976.png"         mobileH="" desktopH="md:h-[699px]" />
-          <ProjectCard title="Minimal Playground" tags={["Social Media", "Photography"]} image="/portfolio-minimal-playground.png" mobileH="" desktopH="md:h-[744px]" />
+          {rightItems.map((item, i) => (
+            <ProjectCard key={item._id} item={item} mobileH="" desktopH={RIGHT_HEIGHTS[i]} />
+          ))}
         </div>
       </div>
 
